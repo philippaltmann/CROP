@@ -61,9 +61,7 @@ class TrainableAlgorithm(BaseAlgorithm):
     :return: List of parameters that should be excluded from being saved with pickle. """
     return super(TrainableAlgorithm, self)._excluded_save_params() + ['get_actions', 'heatmap_iterations', '_naming', '_custom_scalars', '_registered_ci', 'envs', 'writer', 'progress_bar', 'silent']
 
-  def should_eval(self) -> bool: 
-    print(self.num_timesteps % self.eval_frequency)
-    return self.eval_frequency is not None and self.num_timesteps % self.eval_frequency == 0  
+  def should_eval(self) -> bool: return self.eval_frequency is not None and self.num_timesteps % self.eval_frequency == 0  
 
   def learn(self, total_timesteps: int, stop_on_reward:float=None, eval_frequency=2048, **kwargs) -> "TrainableAlgorithm":
     """ Learn a policy
