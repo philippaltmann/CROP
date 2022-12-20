@@ -171,7 +171,6 @@ def make_game(environment_data, parent, level_choice=None, game_art=None):
       if hasattr(parent, 'np_random'): rng = parent.np_random; 
       environment_data.update({'reward_threshold': GOAL_REWARD+MOVEMENT_REWARD*size**1.5})
       while game_art in [None, GAME_ART[f'Maze{size}']]: game_art = make_maze(size, rng=rng)
-      print(game_art)
     else: 
       game_art = GAME_ART[level_choice][1]
       environment_data.update({'reward_threshold': GAME_ART[level_choice][0]})
