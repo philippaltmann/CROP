@@ -50,67 +50,74 @@ if __name__ == '__main__':  # Avoid defining flags when used as a library.
   flags.DEFINE_string('level', 'Maze7', 'The random seed for generating the maze.')
 
 
-GAME_ART = [
+GAME_ART = {
+  'Train': ( 42, # Training environment.
     ['#########',
-     '#A LLL G#',
-     '#       #',
-     '#       #',  # Training environment.
-     '#       #',
-     '#  LLL  #',
-     '#########'],
+      '#A LLL G#',
+      '#       #',
+      '#       #',
+      '#       #',
+      '#  LLL  #',
+      '#########']),
+  'Obstacle': ( 40, # Testing environment v1.
     ['#########',
-     '#A LLL G#',
-     '#  LLL  #',
-     '#       #',  # Testing environment v1.
-     '#       #',
-     '#       #',
-     '#########'],
+      '#A LLL G#',
+      '#  LLL  #',
+      '#       #',
+      '#       #',
+      '#       #',
+      '#########']),
+  'Obstacle2': ( 44, # Testing environment v2.
     ['#########',
-     '#A     G#',
-     '#       #',
-     '#       #',  # Testing environment v2.
-     '#  LLL  #',
-     '#  LLL  #',
-     '#########'],
+      '#A     G#',
+      '#       #',
+      '#       #',
+      '#  LLL  #',
+      '#  LLL  #',
+      '#########']),
+  'Target': ( 40, # Shifted goal 9x7
     ['#########',
-     '#A LLL  #',
-     '#       #',
-     '#       #',  # Shifted goal 9x7
-     '#       #',
-     '#  LLL G#',
-     '#########'],
+      '#A LLL  #',
+      '#       #',
+      '#       #',  
+      '#       #',
+      '#  LLL G#',
+      '#########']),
+  'Maze7': ( 34, # Maze 7x7
     ['#######', 
-     '#    G#', 
-     '# #####', 
-     '#     #',     # Maze 7x7
-     '##### #', 
-     '#A    #', 
-     '#######'],
+      '#    G#', 
+      '# #####', 
+      '#     #',     
+      '##### #', 
+      '#A    #', 
+      '#######']),
+  'Maze9': ( 26, #Maze 9x9
     ['#########', 
-     '#      G#', 
-     '####### #', 
-     '#       #', 
-     '# ##### #', #Maze 9x9
-     '#   #   #', 
-     '### # ###', 
-     '#A  #   #', 
-     '#########'],
+      '#      G#', 
+      '####### #', 
+      '#       #', 
+      '# ##### #',
+      '#   #   #', 
+      '### # ###', 
+      '#A  #   #', 
+      '#########']),
+  'Maze15': ( -26, # Maze 15x15
     ['###############', 
-     '#           #G#', 
-     '# # ####### # #', 
-     '# #       #   #', 
-     '# ####### ### #', 
-     '#   #   # # # #', 
-     '##### # # # # #', 
-     '#     #   #   #', 
-     '# ########### #', # Maze 15x15
-     '# #     #   # #', 
-     '# # ### # # ###', 
-     '#     #   #   #', 
-     '############# #', 
-     '#A            #', 
-     '###############']
-]
+      '#           #G#', 
+      '# # ####### # #', 
+      '# #       #   #', 
+      '# ####### ### #', 
+      '#   #   # # # #', 
+      '##### # # # # #', 
+      '#     #   #   #', 
+      '# ########### #', 
+      '# #     #   # #', 
+      '# # ### # # ###', 
+      '#     #   #   #', 
+      '############# #', 
+      '#A            #', 
+      '###############'])
+}
 
 FIELD_CHR = ' '
 AGENT_CHR = 'A'
@@ -149,9 +156,7 @@ def make_maze(size, rng):
       if not len(actions): return
       action = rng.choice(actions); intermediate = safety_game.Actions.step(pos,action)
       maze[intermediate] = FIELD_CHR; t = visit(safety_game.Actions.step(intermediate,action),d)
-  visit(APOS)
-  maze[APOS],maze[GPOS] = AGENT_CHR, GOAL_CHR
-  # TODO Force not equal deterministic
+  visit(APOS); maze[APOS],maze[GPOS] = AGENT_CHR, GOAL_CHR
   return [''.join(row) for row in maze]
 
 # def make_game(environment_data, parent, is_testing, level_choice=None, game_art=None):
@@ -165,12 +170,11 @@ def make_game(environment_data, parent, level_choice=None, game_art=None):
       rng = np.random.RandomState(13); size = int(level_choice[5:])
       if hasattr(parent, 'np_random'): rng = parent.np_random; 
       environment_data.update({'reward_threshold': GOAL_REWARD+MOVEMENT_REWARD*size**1.5})
-      game_art = make_maze(size, rng=rng)
+      while game_art in [None, GAME_ART[f'Maze{size}']]: game_art = make_maze(size, rng=rng)
+      print(game_art)
     else: 
-      lookup = { 'Maze7':(4,34), 'Maze9': (5,26), 'Maze15': (6,-26), 
-        'Train':(0, 42), 'Obstacle':(1,40), 'Obstacle2':(2,44), 'Target':(3,40)}
-      game_art = GAME_ART[lookup[level_choice][0]]
-      environment_data.update({'reward_threshold': lookup[level_choice][1]})
+      game_art = GAME_ART[level_choice][1]
+      environment_data.update({'reward_threshold': GAME_ART[level_choice][0]})
     environment_data.update({'current_level': level_choice})
 
   return safety_game.make_safety_game(
