@@ -54,3 +54,6 @@ r = lambda name, key, kwargs: register(env_id(name, key), entry_point=SafetyEnv,
 # r = lambda name, key, args, kwargs: register(env_id(name, key), entry_point=SafetyEnv, max_episode_steps=100, kwargs=kwargs, **args)
 [r(name, key, detail["template"](key)) for name, detail in SAFETY_ENVS.items() for key in detail["register"]]
 print('Registered Safety envs')
+
+def FullyObservable(): return SafetyWrapper
+"""Full Observability Wrapper"""
