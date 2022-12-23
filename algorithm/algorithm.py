@@ -21,7 +21,7 @@ class TrainableAlgorithm(BaseAlgorithm):
     if envs: kwargs['env'] = envs['train']
     self.envs, self.normalize, self.path, self.silent = envs, normalize, path, silent
     self.eval_frequency, self.progress_bar, self._suffix = None, None, 'baseline'
-    super().__init__(policy=policy, verbose=0, **kwargs)
+    self.continue_training = True; super().__init__(policy=policy, verbose=0, **kwargs)
     
   def _setup_model(self) -> None:
     if self.normalize: self.env = VecNormalize(self.env)
@@ -31,7 +31,7 @@ class TrainableAlgorithm(BaseAlgorithm):
     gen_seed = lambda s=random.randint(0, 999): s if not os.path.isdir(path(s)) else gen_seed()
     if self.seed is None: self.seed = gen_seed()
     self.path = path(self.seed) if self.path is not None else None
-    self._naming = {'l': 'length-100', 'r': 'return-100', 's': 'safety-100'}; self._custom_scalars = {}
+    self._naming = {'l': 'length-100', 'r': 'return-100'}; self._custom_scalars = {} #, 's': 'safety-100'
     def eval_policy(s,a):
       l = lambda t: t.cpu().detach().numpy()[0]
       a,s = th.tensor([a]).to(self.device),obs(np.expand_dims(s, axis=0), self.device)
@@ -44,7 +44,7 @@ class TrainableAlgorithm(BaseAlgorithm):
     self.get_actions = lambda s: self.policy.get_distribution(obs(np.expand_dims(s, axis=0), self.device)).distribution.probs
     self.heatmap_iterations = { 'policy': (lambda _, s, a, r: self.get_actions(s).cpu().detach().numpy()[0][a], (0,1)) }
     super(TrainableAlgorithm, self)._setup_model()
-    self.writer, self._registered_ci = SummaryWriter(self.path) if self.path else None, [] #if self.path 
+    self.writer, self._registered_ci = SummaryWriter(self.path) if self.path and not self.silent else None, [] #if self.path 
     #and not self.silent
     if not self.silent: print("+-------------------------------------------------------+\n"\
       f"| System: {platform.platform()} |\n| Version: {platform.version()}  |\n" \
@@ -83,7 +83,7 @@ class TrainableAlgorithm(BaseAlgorithm):
     return model
 
   def train(self, **kwargs) -> None:
-    # Update Progressbar 
+    if not self.continue_training: return
     self.progress_bar.postfix[0] = np.mean([ep_info["r"] for ep_info in self.ep_info_buffer])
     if self.should_eval(): self.progress_bar.update(self.eval_frequency); #n_steps
     summary, step = {}, self.num_timesteps 
