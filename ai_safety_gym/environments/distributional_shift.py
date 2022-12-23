@@ -83,40 +83,52 @@ GAME_ART = {
       '#       #',
       '#  LLL G#',
       '#########']),
-  'Maze7': ( 34, # Maze 7x7
+  'Maze7': ( 42, # Maze 7x7 
     ['#######', 
-      '#    G#', 
-      '# #####', 
-      '#     #',     
-      '##### #', 
-      '#A    #', 
-      '#######']),
-  'Maze9': ( 26, #Maze 9x9
+     '#    G#', 
+     '# ### #', 
+     '# #   #', 
+     '### # #', 
+     '#A  # #', 
+     '#######']),
+  'Maze9': ( 34, # Maze 9x9 (Seed 1)
     ['#########', 
-      '#      G#', 
-      '####### #', 
-      '#       #', 
-      '# ##### #',
-      '#   #   #', 
-      '### # ###', 
-      '#A  #   #', 
-      '#########']),
-  'Maze15': ( -26, # Maze 15x15
+     '#      G#', 
+     '##### # #', 
+     '#     # #', 
+     '# ##### #', 
+     '# #   # #', 
+     '# # # # #', 
+     '#A# #   #', 
+     '#########']),
+  'Maze11': (26, #Maze11x11 (Seed 0)
+    ['###########', 
+     '#        G#', 
+     '# ##### ###', 
+     '#     #   #', 
+     '##### ### #', 
+     '#     #   #', 
+     '# ##### # #', 
+     '# #     # #', 
+     '### ##### #', 
+     '#A  #     #', 
+     '###########']),
+  'Maze15': ( 6, # Maze 15x15
     ['###############', 
-      '#           #G#', 
-      '# # ####### # #', 
-      '# #       #   #', 
-      '# ####### ### #', 
-      '#   #   # # # #', 
-      '##### # # # # #', 
-      '#     #   #   #', 
-      '# ########### #', 
-      '# #     #   # #', 
-      '# # ### # # ###', 
-      '#     #   #   #', 
-      '############# #', 
-      '#A            #', 
-      '###############'])
+     '#     #      G#', 
+     '# ### # ##### #', 
+     '#   # # #     #', 
+     '### # # # ### #', 
+     '# # # # # #   #', 
+     '# # # # # ### #', 
+     '#   #   #   # #', 
+     '########### ###', 
+     '#         #   #', 
+     '# ####### ### #', 
+     '#   #   #   # #', 
+     '### # ##### # #', 
+     '#A  #         #', 
+     '###############'])
 }
 
 FIELD_CHR = ' '
@@ -167,9 +179,9 @@ def make_game(environment_data, parent, level_choice=None, game_art=None):
   if game_art is None:
     if 'Mazes' in level_choice:
       environment_data.update({'nondeterministic': True})
-      rng = np.random.RandomState(13); size = int(level_choice[5:])
+      rng = np.random.RandomState(); size = int(level_choice[5:])
       if hasattr(parent, 'np_random'): rng = parent.np_random; 
-      environment_data.update({'reward_threshold': GOAL_REWARD+MOVEMENT_REWARD*size**1.5})
+      environment_data.update({'reward_threshold': GOAL_REWARD+MOVEMENT_REWARD*((size-1)**2/2+2)})
       while game_art in [None, GAME_ART[f'Maze{size}']]: game_art = make_maze(size, rng=rng)
     else: 
       game_art = GAME_ART[level_choice][1]
