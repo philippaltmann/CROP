@@ -22,8 +22,6 @@ args = {key: value for key, value in vars(parser.parse_args()).items() if value 
 
 method = args.pop('method'); method.append('FullyObservable') if len(method)<2 else None
 algorithm, wrapper = eval(method.pop(0)), eval(method[0])(*method[1:])
-print(algorithm)
-print(wrapper)
 
 name, spec = 'DistributionalShift', args.pop('env')
 envs, sparse = factory(name=name, spec=spec, wrapper=wrapper)
