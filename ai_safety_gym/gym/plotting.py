@@ -41,15 +41,15 @@ def heatmap_2D(data, vmin=0, vmax=1):
   return figure
 
 
-def heatmap_3D(data, show_agent=False, compress=False):
+def heatmap_3D(data, show_agent=False, compress=False, deterministic=False):
   if compress: data = data[1:-1,1:-1] # Crop walls[[field for field in row[1:-1]] for row in data[1:-1]]
   mean = lambda v: round(np.mean(v),np.mean(v)<10); rows,cols = data.shape[0:2]
 
   fltd = np.array([mean(v) for row in data for col in row for v in col if v is not None and not None in v])
   pct = lambda v: max(min(percentileofscore(fltd, mean(v)) / 100, 1), 0)
-  lookup = {'g':'hsl(140,100%,50%)', 'l': 'hsl(0,100%,50%)', 'w': 'rgba(192,192,192,0.5)'}
+  lookup = {'g':'hsl(140,100%,50%)', 'l': 'hsl(0,100%,50%)', 'w': 'rgba(192,192,192,0.5)', 'n':'rgba(0,0,0,0)' }
   _heat = lambda v: 'hsl({:0.0f},80%,{:0.0f}%)'.format(pct(v)*140, 75-30*abs((pct(v)-1/3)*3/2))
-  color = lambda v: lookup[v] if type(v) == str and v in ['a','g','l','w'] else _heat(v) 
+  color = lambda v: lookup[v] if type(v) == str and v in ['a','g','l','n','w'] else _heat(v) 
   _w = lambda c,r: not compress and (r in [0,rows-1] or c in [0,cols-1])
   _g = lambda c,r: r in [1-compress,rows-2+compress] and c in [1-compress,cols-2+compress] 
   t = lambda c,r: 'w' if _w(c,r) else 'g' if _g(c,r) else 'l'
@@ -71,7 +71,9 @@ def heatmap_3D(data, show_agent=False, compress=False):
   triang = lambda c,r,i: _adapt(c,r, [(0,1,2), (0,4,1), (0,3,4), (0,2,3)][i]) #urdl(0,1,2), (0,2,3), (0,3,4), (0,4,1)
   border = lambda c,r: [ul(c,r), dl(c,r), dr(c,r), ul(c,r), dl(c,r), ur(c,r), dr(c,r), ul(c,r), ur(c,r), dr(c,r)]
   square = lambda c,r: [_adapt(c,r,v) for v in [(1,2,3), (1,3,4), (6,7,8), (5,6,8), (1,2,6), (2,5,6), (2,3,6), (3,6,7), (3,4,8), (3,7,8), (1,4,8), (1,5,8)]]
-  field = lambda c,r,val: [] if None in val.flat else [(*triang(c,r,i), color(v)) for i,v in enumerate(val)] 
+  softmax = lambda val: [1 if i==np.argmax(np.mean(val, axis=1)) else 'n' for i in range(val.shape[0])]
+  # np.full((val.shape[0]),None).put([np.argmax(np.mean(val, axis=1))], [1]) #val.shape[0]#
+  field = lambda c,r,val: [] if None in val.flat else [(*triang(c,r,i), color(v)) for i,v in enumerate(softmax(val))] 
   cube = lambda c,r,val: [(*f, color(t(c,r))) for f in square(c,r)] if None in val.flat else []
   agent = lambda c,r,val: [(*f, 'hsl(210,100%,50%)') for f in square(c,r)] if show_agent and c==cols-2 and r==1 else []
   process = lambda *f: np.array([result for fn in f for r, row in enumerate(data) for c,val in enumerate(reversed(row)) for result in fn(c,r,val)]).T.tolist()
@@ -86,4 +88,4 @@ def heatmap_3D(data, show_agent=False, compress=False):
   axis = {'showbackground':False, 'tickmode': 'linear', 'range':[-0.5,max(cols,rows)-0.5], 'visible': False} 
   scene = {'xaxis':axis, 'yaxis':axis, 'zaxis':axis, 'camera': {'eye': {'x':0, 'y':0.125+compress*0.05, 'z':0.6-compress*0.1}}} 
   layout = go.Layout(margin={'l':0,'r':0,'t':0,'b':0}, width=855, height=600, scene=scene,  showlegend=False) #title=title
-  return go.Figure(data=[mesh,lines,text], layout=layout)
+  return go.Figure(data=[mesh,lines]+([text]if not deterministic else []), layout=layout)
