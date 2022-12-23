@@ -1,14 +1,12 @@
 import os; from os import path; import itertools; from parse import parse; from tqdm import tqdm
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator as EA
 import pandas as pd; import numpy as np; import scipy.stats as st
-from ai_safety_gym import factory, make, env_spec, SafetyWrapper
+from ai_safety_gym import factory, make, env_spec
 from benchmark import *; from crop import *
 
 def extract_model(exp, run):
-  method = exp['algorithm'].split(' '); wrapper = SafetyWrapper
-  if method[-1] == '': method.pop(-1)
-  algorithm, seed = eval(method.pop(0)), int(run.name)
-  if len(method): wrapper = eval(method[0])(*method[1:])[0]
+  algorithm, seed = eval(exp['algorithm']), int(run.name)
+  method = exp['method'].split(' '); wrapper = eval(method.pop(-1))(*method)
   # TODO: extract name from path 
   envs = factory(name='DistributionalShift', spec=exp['env'], wrapper=wrapper, n_train=1)[0]
   envs['train'].seed(seed); [env.seed(seed) for _,env in envs['test'].items()]
@@ -32,13 +30,12 @@ def fetch_experiments(base='./results', alg=None, env=None, metrics=[], dump_csv
   else: experiments = [{'env': e.name, 'path': e.path} for e in subdirs(base) if e.name != 'plots']
 
   print(f"Scanning for {alg if alg else 'algorithms'} in {base}")  # Second layer: Algorithms
-  # if alg: experiments = [{**exp, 'algorithm': alg, 'path': f'{exp["path"]}/{alg}'} for exp in tqdm(experiments)]
   if alg: experiments = [{**exp, 'algorithm': alg, 'path': a} for exp in tqdm(experiments) for a in subdirs(exp['path']) if alg == a.name]
-  else: experiments = [{**exp, 'algorithm': a.name, 'path': a} for exp in tqdm(experiments) for a in subdirs(exp['path']) if any([n in [*ALGS, *CROPS] for n in a.name.split(' ')])] # if a.name in [*ALGS, *CROPS]
+  else: experiments = [{**exp, 'algorithm': a.name, 'path': a} for exp in tqdm(experiments) for a in subdirs(exp['path']) if any([n in [*ALGS, *CROPS] for n in a.name.split(' ')])]
 
   # Third Layer: Count Runs / fetch tb files
-  experiments = [{ **exp, 'path': exp['path'].path, 'runs': len(subdirs(exp['path'])) } for exp in experiments]
-  print(f"Loading experiment logfiles from {metrics} [{sum([exp['runs'] for exp in experiments])* len(metrics)}]")
+  print(f"Scanning for hyperparameters in {base}")  # Third layer: Hyperparameters & number of runs
+  experiments = [{ **exp, 'path': e.path,  'method': e.name, 'runs': len(subdirs(e)) } for exp in tqdm(experiments) if os.path.isdir(exp['path']) for e in subdirs(exp['path'])]
 
   progressbar = tqdm(total=sum([exp['runs'] for exp in experiments])* len(metrics))
   data_buffer = {}
@@ -78,10 +75,12 @@ def fetch_experiments(base='./results', alg=None, env=None, metrics=[], dump_csv
 
 def group_experiments(experiments, groupby=['algorithm', 'env'], label_excl=[], mergeon=None): #merge=None
   # Graphical helpers for titles, labels
-  forms = {'algorithm':'{}', 'env':'{}', 'chi': 'Χ: {:.1f}', 'omega':  'ω: {:.2f}', 'kappa': 'κ: {:d}'}
-  label = lambda exp, excl=label_excl: ' '.join([f.format(exp[key]) for key, f in forms.items() if key in exp and key not in groupby + excl])
-  title = lambda exp: ' '.join([f.format(exp[key]) for key, f in forms.items() if key in exp and key in groupby])
+  forms = ['algorithm', 'method', 'env']
+  label = lambda exp, excl=label_excl: ' '.join([exp[key] for key in forms if key in exp and key not in groupby + excl])
+  title = lambda exp: ' '.join([exp[key] for key in forms if key in exp and key in groupby])
   def hue(index): index[0] += 1; return 360 / index[1] * index[0] - 180/(index[1] * index[0]); #32; 180
+  hue2 = lambda alg: [hue for key,hue in {'Object': 150, 'Action': 200, 'Radius': 220, 'FullyObservable': 350, 'RAD': 100, 'SAC':30}.items() if key in alg][0]
+  #index[0] += 1; return 360 / index[1] * index[0] - 180/(index[1] * index[0]); #32; 180
 
   # Create product of all occuances of specified groups, zip with group titles & add size and a counter of visited group items
   def merge(experiments, key):
@@ -95,7 +94,7 @@ def group_experiments(experiments, groupby=['algorithm', 'env'], label_excl=[], 
   ingroup = lambda experiment, group: all([experiment[k] == v for k,v in zip(groupby, group)])
   options = list(zip(options, [[ title(exp) for exp in experiments if ingroup(exp,group)] for group in options ]))
   options = [(group, [0, len(titles)], titles[0]) for group, titles in options]
-  getgraph = lambda exp, index: { 'label': label(exp), 'data': exp['data'], 'models': exp['models'], 'hue': hue(index)} 
+  getgraph = lambda exp, index: { 'label': label(exp), 'data': exp['data'], 'models': exp['models'], 'hue': hue2(exp['method'])} # hue(index)
   return [{'title': title, 'graphs': [ getgraph(exp, index) for exp in experiments if ingroup(exp, group) ] } for group, index, title in options ]
 
 
@@ -126,7 +125,7 @@ def process_ci(data, models):
   
   # Mean 1..n | CI 1..n..1
   mean, h = data.mean(axis=1), data.apply(ci, axis=1)
-  ci = pd.concat([mean+h, (mean-h).iloc[::-1]]).clip(upper=upper)
+  ci = pd.concat([mean+h, (mean-h).iloc[::-1]]).clip(upper=upper, lower=-100)
   return (mean, ci, stop)
 
 
@@ -135,7 +134,7 @@ def process_steps(data, models): return ([d.index[-1] for d in data], 10e5)
 
 iterate = lambda model, envs, func: [ func(env, k,i) for env in envs for k,i in model.heatmap_iterations.items() ]
 heatmap = lambda model, envs: iterate(model, envs, lambda env, k,i: env.envs[0].iterate(i[0]))
-metadata = lambda model, envs: iterate(model, envs, lambda env, k,i: (f'{k.capitalize()} Env-{env_spec(env).id[-1]}', i[1]))
+metadata = lambda model, envs: iterate(model, envs, lambda env, k,i: (f'{k.capitalize()} {env_spec(env)._kwargs["level_choice"]}', i[1]))
 # make_env = lambda model, spec: make(env_spec(model.envs['train'])._env_name, spec, seed=model.seed)
 
 # name = lambda spec: spec._env_name.replace(spec._kwargs['level_choice'], '')
