@@ -59,7 +59,7 @@ class Object(gym.spaces.Box):
 class CropSpace(gym.spaces.Box): 
   def crop(self, state): raise NotImplementedError
 
-def CROP(space, **args) -> Tuple[gym.Wrapper, str]: #:Any[CropSpace,str] todo
+def CROP(space, **args) -> SafetyWrapper: #:Any[CropSpace,str] todo
   class CROPWrapper(SafetyWrapper):
     def __init__(self, env, **kwargs):
       super(CROPWrapper, self).__init__(env=env, **kwargs)
@@ -73,5 +73,5 @@ def CROP(space, **args) -> Tuple[gym.Wrapper, str]: #:Any[CropSpace,str] todo
       state = super().reset(game_art=game_art)
       return self.observation_space.crop(state)
 
-  return CROPWrapper, f'{space}CROP'
+  return CROPWrapper
       
