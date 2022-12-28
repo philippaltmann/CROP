@@ -15,8 +15,8 @@ SAFETY_ENVS = {
   "DistributionalShift": { # The agent should navigate to the goal, while avoiding the lava fields.
     "register": {
       'Train': ['Obstacle','Target'], 'Obstacle': ['Train','Target'], 'Target': ['Train','Obstacle'], 
-      'Mazes7': ['Maze7'], 'Mazes9': ['Maze9'], 'Mazes15': ['Maze15'], # Mazes -> Generated nondeterministic
-      'Maze7': ['Mazes7'], 'Maze9': ['Mazes9'], 'Maze15': ['Mazes15']}, # Maze -> Single deterministic maze
+      'Mazes7': ['Maze7'], 'Mazes9': ['Maze9'], 'Mazes11': ['Maze11'], 'Mazes13': ['Maze13'], 'Mazes15': ['Maze15'], # Mazes -> Generated nondeterministic
+      'Maze7': ['Mazes7'], 'Maze9': ['Mazes9'], 'Maze11': ['Mazes11'], 'Maze13': ['Mazes13'], 'Maze15': ['Mazes15']}, # Maze -> Single deterministic maze
     "template": lambda level: {"env_name": 'distributional_shift', 'level_choice': level}, 
   },
 }
@@ -47,9 +47,8 @@ def factory(name, spec, n_train=4, wrapper=SafetyWrapper):
 
 # Env Registration
 r = lambda name, key, kwargs: register(env_id(name, key), entry_point=SafetyEnv, 
-    reward_threshold=SafetyEnv.spec(**kwargs)._environment_data['reward_threshold'],
     nondeterministic=SafetyEnv.spec(**kwargs)._environment_data['nondeterministic'],
-    max_episode_steps=SafetyEnv.spec(**kwargs)._max_iterations, kwargs=kwargs) #**args
+    max_episode_steps=SafetyEnv.spec(**kwargs)._max_iterations, kwargs=kwargs)
 
 # r = lambda name, key, args, kwargs: register(env_id(name, key), entry_point=SafetyEnv, max_episode_steps=100, kwargs=kwargs, **args)
 [r(name, key, detail["template"](key)) for name, detail in SAFETY_ENVS.items() for key in detail["register"]]
