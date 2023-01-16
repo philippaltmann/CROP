@@ -3,6 +3,7 @@ import numpy as np
 import gym
 from ai_safety_gym import SafetyWrapper
 from ai_safety_gym.environments.shared.safety_game import Actions
+from data_augs import random_cutout, random_crop, random_translate
 
 class Radius(gym.spaces.Box):
   def __init__(self, env, radius=(5,5)):
@@ -74,4 +75,17 @@ def CROP(space, **args) -> SafetyWrapper: #:Any[CropSpace,str] todo
       return self.observation_space.crop(state)
 
   return CROPWrapper
-      
+
+class AugmentedData(gym.spaces.Box):
+  def __init__(self, env):
+    e = env.unwrapped._env
+    values = list(e._value_mapping.values())
+    super(AugmentedData, self).__init__(low=values[0], high=values[-1], shape=(8,8), dtype=int)
+
+  #This should be named augment, but is probably called with .crop consistently ?
+  def crop(self, state): 
+    crop_out_state = random_crop(state,out=6)
+    translated_state = random_translate(crop_out_state, size=8)
+    cut_state = random_cutout(translated_state)
+    return cut_state
+
