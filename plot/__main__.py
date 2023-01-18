@@ -3,19 +3,13 @@ from plot.metrics import *
 from plot.plotting import * 
 
 options = { # Title, Scalar(Name, Tag), process(scalar)->data, display(data)->trace
-  # 'Reward': (('Reward', 'metrics/validation_reward'), process_ci, plot_ci),
-  'Return': (('Return', 'rewards/return-100-mean'), process_ci, plot_ci),
-  'Train': (('Validation', 'rewards/validation'), process_ci, plot_ci),
-  'Test': (('Evaluation', 'rewards/evaluation-0'), process_ci, plot_ci),
-  'Buffer': (('Buffer', 'rewards/return-100-mean'), process_ci, plot_ci),
-  'Length':  (('Length', 'rewards/length-100-mean'), process_ci, plot_ci),
-  'Steps': (('Return', 'rewards/return-100-mean'),  process_steps, plot_box), # ('Model', 'metrics/validation_reward')
+  'Validation': (('Validation', 'rewards/validation'), process_ci, plot_ci),
+  'Evaluation': (('Evaluation', 'rewards/evaluation-0'), process_ci, plot_ci),
 }
 
 # Process commandline arguments 
 parser = argparse.ArgumentParser()
 parser.add_argument('base', help='The results root')
-# parser.add_argument('-a', dest='alg', help='Algorithm to vizualise.')
 parser.add_argument('-a', dest='alg', nargs='+', help='The algorithm to vizualise', choices=[*ALGS, *CROPS])
 parser.add_argument('-b', dest='baseline', help='Base path of reloaded model.')
 parser.add_argument('-e', dest='env', help='Environment to vizualise.')
@@ -24,7 +18,6 @@ parser.add_argument('-m', dest='metrics', nargs='+', default=[], choices=options
 parser.add_argument('--heatmap', nargs='+', default=[], help='Environment to vizualise.')
 parser.add_argument('--mergeon', help='Key to merge experiments e.g. algorithm.')
 parser.add_argument('--no-dump', dest='dump_csv', action='store_false', help='Skip csv dump')
-parser.add_argument('--eval', nargs='+', default=[], help='Run Evaluations')
 
 args = vars(parser.parse_args()); tryint = lambda s: int(s) if s.isdigit() else s
 if args['alg']: args['alg'] = ' '.join(args['alg'])
@@ -33,15 +26,11 @@ groupby = args.pop('groupby'); mergeon = args.pop('mergeon');
 mergemetrics,_ = (True, groupby.remove('metrics')) if 'metrics' in groupby else (False,None)
 if len(hm): options['Heatmap'] = (('Model', hm), process_heatmap, get_heatmap(True, True)); args['metrics'].append('Heatmap') 
 
-enames = ['Training', 'Shifted Obs', 'Shifted Obs 2', 'Shifted Goal']
-def add_eval(e): options[enames[e]] = (('Model', e), process_eval, plot_eval); args['metrics'].append(enames[e])
-ev = [add_eval(tryint(e)) for e in args.pop('eval')]
 metrics = [(metric, *options[metric]) for metric in args.pop('metrics')]
 titles, scalars, procs, plotters = zip(*metrics)
-label_exclude =  [] #if args['alg'] and args['alg'] == 'DIRECT' else ['chi', 'omega', 'kappa']
 
 experiments = fetch_experiments(**args, metrics=list(zip(titles, scalars)))
-experiments = group_experiments(experiments, groupby, label_exclude, mergeon)
+experiments = group_experiments(experiments, groupby, mergeon)
 experiments = calculate_metrics(experiments, list(zip(titles, procs)))
 if mergemetrics:
   experiments = [ {'title': t, 'metric': metrics[0][0], 'merge': True, 
@@ -54,6 +43,5 @@ figures = generate_figures(experiments, dict(zip(titles, plotters)))
 # Save figures
 out = f'{args["base"]}/plots/{"-".join(groupby)}'; os.makedirs(out, exist_ok=True)
 if len(hm): os.makedirs(out+'/Heatmaps', exist_ok=True)
-if len(ev): os.makedirs(out+'/Evaluation', exist_ok=True)
 print("Done Evaluating. Saving Plots.")
 for name, figure in tqdm(figures.items()): figure.write_image(f'{out}/{name}.svg')
