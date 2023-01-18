@@ -1,13 +1,12 @@
-import os; from os import path; import itertools; from parse import parse; from tqdm import tqdm
+import os; from os import path; import itertools; from tqdm import tqdm
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator as EA
-import pandas as pd; import numpy as np; import scipy.stats as st
+import pandas as pd; import numpy as np; import scipy.stats as st; import re
 from ai_safety_gym import factory, make, env_spec
 from benchmark import *; from crop import *
 
 def extract_model(exp, run):
   algorithm, seed = eval(exp['algorithm']), int(run.name)
-  method = exp['method'].split(' '); wrapper = eval(method.pop(-1))(*method)
-  # TODO: extract name from path 
+  method = exp['method'].split(' ')[::-1]; wrapper = eval(method.pop(0))(*method)
   envs = factory(name='DistributionalShift', spec=exp['env'], wrapper=wrapper, n_train=1)[0]
   envs['train'].seed(seed); [env.seed(seed) for _,env in envs['test'].items()]
   model = algorithm.load(load=run.path, seed=seed, envs=envs, path=None, silent=True, device='cpu')
@@ -59,28 +58,31 @@ def fetch_experiments(base='./results', alg=None, env=None, metrics=[], dump_csv
     if name == 'Model': return key
     data = fetch_data(exp, run.path, name, key)
     if baseline is None: return data
-    path = run.path.replace(base, baseline).replace(exp['env'], 'TrainingDense' if 'Dense' in exp['env'] else 'TrainingSparse')
+    path = run.path.replace(base, baseline)
     prev = fetch_data(exp, path, name, key)
     data.index = data.index - prev.index[-1] # Norm by last baseline index
     return data
   
   # Process given experiments
-  process_data = lambda exp, name, key: [ extract_data(exp, run, name, key) for run in subdirs(exp['path']) ] 
-  fetch_models = lambda exp: [ extract_model(exp, run) for run in subdirs(exp['path']) ] 
+  finished = lambda dir: [d for d in subdirs(dir) if len(subdirs(d))] # subdirs(d)[0].name == 'model'
+  process_data = lambda exp, name, key: [ extract_data(exp, run, name, key) for run in finished(exp['path']) ] 
+  fetch_models = lambda exp: [ extract_model(exp, run) for run in finished(exp['path'])] 
   experiments = [{**exp, 'data': { name: process_data(exp, *scalar) for name, scalar in metrics }, 'models': fetch_models(exp)} for exp in experiments]
   progressbar.close()
 
   return experiments
 
 
-def group_experiments(experiments, groupby=['algorithm', 'env'], label_excl=[], mergeon=None): #merge=None
+def group_experiments(experiments, groupby=['algorithm', 'env'], mergeon=None): #merge=None
   # Graphical helpers for titles, labels
   forms = ['algorithm', 'method', 'env']
-  label = lambda exp, excl=label_excl: ' '.join([exp[key] for key in forms if key in exp and key not in groupby + excl])
+  def label(exp):
+    i = {key: re.sub(r'[0-9]+ ', '', exp[key]) for key in forms if key in exp and key not in groupby}
+    check = lambda keys,base,op=all: op([k in base for k in keys])
+    return f"{i['algorithm'] if check(['algorithm', 'method'],i) and check(['Full','RAD'],i['method'], any) else ''} {'FO' if check(['Full'],i['method']) else i['method']}"
+
   title = lambda exp: ' '.join([exp[key] for key in forms if key in exp and key in groupby])
-  def hue(index): index[0] += 1; return 360 / index[1] * index[0] - 180/(index[1] * index[0]); #32; 180
-  hue2 = lambda alg: [hue for key,hue in {'Object': 150, 'Action': 200, 'Radius': 220, 'FullyObservable': 350, 'RAD': 100, 'SAC':30}.items() if key in alg][0]
-  #index[0] += 1; return 360 / index[1] * index[0] - 180/(index[1] * index[0]); #32; 180
+  hue = lambda alg: [hue for key,hue in {'Object': 150, 'Action': 200, 'Radius': 230, 'A2C':40, 'Full': 350, 'RAD': 70}.items() if key in alg][0]
 
   # Create product of all occuances of specified groups, zip with group titles & add size and a counter of visited group items
   def merge(experiments, key):
@@ -94,7 +96,7 @@ def group_experiments(experiments, groupby=['algorithm', 'env'], label_excl=[], 
   ingroup = lambda experiment, group: all([experiment[k] == v for k,v in zip(groupby, group)])
   options = list(zip(options, [[ title(exp) for exp in experiments if ingroup(exp,group)] for group in options ]))
   options = [(group, [0, len(titles)], titles[0]) for group, titles in options]
-  getgraph = lambda exp, index: { 'label': label(exp), 'data': exp['data'], 'models': exp['models'], 'hue': hue2(exp['method'])} # hue(index)
+  getgraph = lambda exp, index: { 'label': label(exp), 'data': exp['data'], 'models': exp['models'], 'hue': hue(exp['method']+exp['algorithm'])} 
   return [{'title': title, 'graphs': [ getgraph(exp, index) for exp in experiments if ingroup(exp, group) ] } for group, index, title in options ]
 
 
@@ -116,8 +118,9 @@ def process_ci(data, models):
   # Helper to claculate confidence interval
   ci = lambda d, confidence=0.95: st.t.ppf((1+confidence)/2, len(d)-1) * st.sem(d)
   stop = models[0].envs['train'].get_attr('reward_threshold')[0]
+  reward_range = models[0].envs['train'].get_attr('env')[0].env.reward_range
   upper = models[0].envs['train'].get_attr('env')[0].spec.reward_threshold
-
+  upper = round(upper/0.95) if not models[0].continue_training else None # Retrieve max from threhsold 
   # Prepare Data (fill until highest index)
   steps = [d.index[-1] for d in data]; maxsteps = np.max(steps)
   for d in data: d.at[maxsteps, 'Data'] = float(d.tail(1)['Data'])
@@ -126,7 +129,8 @@ def process_ci(data, models):
   # Mean 1..n | CI 1..n..1
   mean, h = data.mean(axis=1), data.apply(ci, axis=1)
   ci = pd.concat([mean+h, (mean-h).iloc[::-1]]).clip(upper=upper, lower=-100)
-  return (mean, ci, stop)
+  return (mean, ci, reward_range)
+  # return (mean, ci, stop)
 
 
 def process_steps(data, models): return ([d.index[-1] for d in data], 10e5)
@@ -135,10 +139,6 @@ def process_steps(data, models): return ([d.index[-1] for d in data], 10e5)
 iterate = lambda model, envs, func: [ func(env, k,i) for env in envs for k,i in model.heatmap_iterations.items() ]
 heatmap = lambda model, envs: iterate(model, envs, lambda env, k,i: env.envs[0].iterate(i[0]))
 metadata = lambda model, envs: iterate(model, envs, lambda env, k,i: (f'{k.capitalize()} {env_spec(env)._kwargs["level_choice"]}', i[1]))
-# make_env = lambda model, spec: make(env_spec(model.envs['train'])._env_name, spec, seed=model.seed)
-
-# name = lambda spec: spec._env_name.replace(spec._kwargs['level_choice'], '')
-# make_env = lambda model, spec: make(name(env_spec(model.envs['train'])), spec, seed=model.seed)
 make_env = lambda model, spec: [e for e in model.envs['test'].values() if spec in env_spec(e)._env_name][0]
 
 def process_heatmap(specs, models):
@@ -149,7 +149,7 @@ def process_heatmap(specs, models):
 
 def process_eval(specs, models, deterministic=True):
   from stable_baselines3.common.evaluation import evaluate_policy
-  assert False, "Make env not using CROP wrappper"
+  # assert False, "Make env not using CROP wrappper"
   data = [(model, make_env(model, spec)) for model,spec in zip(models,specs)]
   termination_reasons = data[0][1].get_attr('termination_reasons')[0]
   def callback(g,l): 
