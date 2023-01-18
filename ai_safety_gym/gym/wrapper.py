@@ -12,8 +12,7 @@ class SafetyWrapper(gym.Wrapper):
       super(SafetyWrapper, self).__init__(env=env)
       self.states, self.actions, self.rewards, self.sparse = [], [], [], sparse
       # Calculate Solved Threshold from optimal reward (env.spec.reward_threshold -> optimal)
-      spec = env.unwrapped._env.environment_data
-      worst, best, perc = *spec['reward_range'], 0.95 if 'Maze' in spec['current_level'] else 0.99
+      worst, best, perc = *env.reward_range, 0.95 if 'Maze' in env.current_level else 0.99
       self.reward_threshold = round(worst + (best - worst) * perc) 
       env.spec.reward_threshold = self.reward_threshold
       self._history = lambda: {
