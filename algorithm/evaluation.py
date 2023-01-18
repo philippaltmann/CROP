@@ -4,6 +4,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from torch.utils.tensorboard.writer import SummaryWriter
 from algorithm.logging import write_hyperparameters
+from ai_safety_gym import env_spec
 
 class EvaluationCallback(BaseCallback):
   """ Callback for evaluating an agent.
@@ -40,6 +41,7 @@ class EvaluationCallback(BaseCallback):
         write_hp: Bool flag to use basic method for writing hyperparams for current evaluation, defaults to False
     Returns: metrics: A dict of evaluation metrics, can be used to write custom hparams """ 
     step = self.model.num_timesteps
+    if not self.writer: return []
     metrics = {k:v for label, env in self.eval_envs.items() for k, v in self.run_eval(env, label, step).items()}
     [self.writer.add_scalar(key, value, step) for key, value in metrics.items()]; self.writer.flush()  
     return metrics
@@ -48,14 +50,12 @@ class EvaluationCallback(BaseCallback):
     video_buffer, FPS, metrics = [], 10, {} # Move video frames from buffer to tensor, unsqueeze & clear buffer
     def retreive(buffer): entries = buffer.copy(); buffer.clear(); return th.tensor(np.array(entries)).unsqueeze(0)
     record_video = lambda locals, _: video_buffer.append(locals['env'].render(mode='rgb_array'))
-    if env.envs[0].unwrapped.spec.nondeterministic: 
-      eval_kwargs = {'n_eval_episodes': 100,'deterministic': False} | eval_kwargs
-    else:
-      eval_kwargs = {'n_eval_episodes': 1,'deterministic': True} | eval_kwargs
+    if 'Maze' in env_spec(env)._kwargs['level_choice']: eval_kwargs = {'n_eval_episodes': 100,'deterministic': False} | eval_kwargs
+    else: eval_kwargs = {'n_eval_episodes': 1,'deterministic': True} | eval_kwargs
 
     r,_ = evaluate_policy(self.model, env, callback=record_video, **eval_kwargs)
     metrics[f"rewards/{label}"] = r # metrics[f"metrics/{label}_reward"] = r
-    # Uncomment for early stopping based on evaluation return
+    # Early stopping based on evaluation return
     if self.stop_on_reward(r) and label == 'validation': self.model.continue_training = False
     if write_video: self.writer.add_video(label, retreive(video_buffer), step, FPS) 
     # Create & write tringle heatmap plots
