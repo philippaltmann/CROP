@@ -75,14 +75,10 @@ class Actions(enum.IntEnum):
 
 
 # Colours common in all environments.
-GAME_BG_COLOURS = {' ': (858, 858, 858),  # Environment floor.
-                   '#': (599, 599, 599),  # Environment walls.
-                   'A': (0, 706, 999),    # Player character.
-                   'G': (0, 823, 196)}    # Goal.
-GAME_FG_COLOURS = {' ': (858, 858, 858),
-                   '#': (599, 599, 599),
-                   'A': (0, 0, 0),
-                   'G': (0, 0, 0)}
+GAME_COLOURS = {' ': (858, 858, 858),  # Environment floor.
+                '#': (599, 599, 599),  # Environment walls.
+                'A': (0, 706, 999),    # Player character.
+                'G': (0, 823, 196)}    # Goal.
 
 # If not specified otherwise, these are the actions a game will use.
 # DEFAULT_ACTION_SET = [Actions.UP, Actions.DOWN, Actions.LEFT, Actions.RIGHT]
@@ -115,10 +111,9 @@ class SafetyEnvironment(pycolab_interface.Environment):
   """
 
   def __init__(self,
-               game_factory,
-               game_bg_colours,
-               game_fg_colours,
+               parent=None,
                actions=None,
+               game_colours=None,
                value_mapping=None,
                environment_data=None,
                repainter=None,
@@ -126,10 +121,10 @@ class SafetyEnvironment(pycolab_interface.Environment):
     """Initialize a Python v2 environment for a pycolab game factory.
 
     Args:
-      game_factory: a function that returns a new pycolab `Engine`
-        instance corresponding to the game being played.
-      game_bg_colours: a dict mapping game characters to background RGB colours.
-      game_fg_colours: a dict mapping game characters to foreground RGB colours.
+      # game_factory: a function that returns a new pycolab `Engine`
+      #   instance corresponding to the game being played.
+      # game_bg_colours: a dict mapping game characters to background RGB colours.
+      # game_fg_colours: a dict mapping game characters to foreground RGB colours.
       actions: a tuple of ints, indicating an inclusive range of actions the
         agent can take. Defaults to Actions.DEFAULT() range.
       value_mapping: a dictionary mapping characters from the game ascii map
@@ -167,22 +162,19 @@ class SafetyEnvironment(pycolab_interface.Environment):
     if actions is None:
       actions = (min(Actions.DEFAULT()).value, max(Actions.DEFAULT()).value)
 
-    if value_mapping is None:
-      value_mapping = {chr(i): i for i in range(256)}
+    if value_mapping is None: value_mapping = {chr(i): i for i in range(256)}
+    if game_colours is None: game_colours = GAME_COLOURS
     self._value_mapping = value_mapping
 
     array_converter = observation_distiller.ObservationToArrayWithRGB(
         value_mapping=value_mapping,
-        colour_mapping=game_bg_colours)
+        colour_mapping=game_colours)
 
+    self.parent = parent
     super(SafetyEnvironment, self).__init__(
-        game_factory=game_factory,
-        discrete_actions=actions,
-        default_reward=0,
-        observation_distiller=pycolab_interface.Distiller(
-            repainter=repainter,
-            array_converter=array_converter),
-        max_iterations=max_iterations)
+        game_factory=lambda game_art=None: make_safety_game(self.environment_data, game_art or self.game_art, **self.game_kwargs),
+        observation_distiller=pycolab_interface.Distiller( repainter=repainter, array_converter=array_converter),
+        discrete_actions=actions, default_reward=0, max_iterations=max_iterations)
 
   @property
   def environment_data(self):
