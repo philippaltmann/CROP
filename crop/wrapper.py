@@ -3,7 +3,6 @@ import numpy as np
 import gym
 from ai_safety_gym import SafetyWrapper
 from ai_safety_gym.environments.shared.safety_game import Actions
-from data_augs import random_cutout, random_crop, random_translate
 
 class Radius(gym.spaces.Box):
   def __init__(self, env, radius=(5,5)):
@@ -41,18 +40,24 @@ class Object(gym.spaces.Box):
     obs_shape = env.unwrapped._env.observation_spec()["board"].shape
     self.agent = env.unwrapped._env._value_mapping['A']
     self.values = [v for k,v in env.unwrapped._env._value_mapping.items() if k != 'A']
-    self.horizon = horizon; self.shape = (len(self.values), horizon*2)
-    high = np.array([list(obs_shape) for _ in range(horizon) for _ in self.values])
+    self.horizon = int(horizon); self.shape = (len(self.values)*self.horizon, 2)
+    high = np.array([list(obs_shape) for _ in range(self.horizon) for _ in self.values])
     super(Object, self).__init__(low=1, high=high, shape=self.shape, dtype=int)
     # high = np.array([[list(obs_shape) for _ in range(horizon)] for _ in self.values])
     # super(Object, self).__init__(low=1, high=high, shape=(len(self.values), horizon, 2), dtype=int)
   
   def crop(self, state): 
     state = np.squeeze(state, axis=0)
-    find = lambda value: list(zip(*np.where(state == value))) # or find(self.agent)
+    def find(value): 
+      res = list(zip(*np.where(state == value))) 
+      if len(res)<self.horizon and value != 2.0: res *= self.horizon
+      if len(res) == 0: res = find(self.agent) * self.horizon
+      return res
+    # find = lambda value: list(zip(*np.where(state == value))) # or find(self.agent)
     a = np.array(find(self.agent))
     def dist(v): 
-      o = np.array(find(v) or a); d = a - o
+      o = np.array(find(v) or a); 
+      d = a - o
       return d[np.argsort(np.sum(d**2,axis=1))][:self.horizon]
     return np.reshape(np.array([dist(v) for v in self.values]), self.shape)
 
@@ -60,11 +65,11 @@ class Object(gym.spaces.Box):
 class CropSpace(gym.spaces.Box): 
   def crop(self, state): raise NotImplementedError
 
-def CROP(space, **args) -> SafetyWrapper: #:Any[CropSpace,str] todo
+def CROP(space, *args) -> SafetyWrapper: #:Any[CropSpace,str] todo
   class CROPWrapper(SafetyWrapper):
     def __init__(self, env, **kwargs):
       super(CROPWrapper, self).__init__(env=env, **kwargs)
-      self.observation_space = eval(space)(env, **args)
+      self.observation_space = eval(space)(env, *args)
     
     def step(self, action):
       state, reward, done, info = super(CROPWrapper, self).step(action)
@@ -75,17 +80,3 @@ def CROP(space, **args) -> SafetyWrapper: #:Any[CropSpace,str] todo
       return self.observation_space.crop(state)
 
   return CROPWrapper
-
-class AugmentedData(gym.spaces.Box):
-  def __init__(self, env):
-    e = env.unwrapped._env
-    values = list(e._value_mapping.values())
-    super(AugmentedData, self).__init__(low=values[0], high=values[-1], shape=(8,8), dtype=int)
-
-  #This should be named augment, but is probably called with .crop consistently ?
-  def crop(self, state): 
-    crop_out_state = random_crop(state,out=6)
-    translated_state = random_translate(crop_out_state, size=8)
-    cut_state = random_cutout(translated_state)
-    return cut_state
-

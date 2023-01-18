@@ -1,3 +1,3 @@
-from .common import Object, CROP
+from .wrapper import CROP
 
-CROPS = ['CROP', 'Object', 'Action', 'Radius']
+CROPS = ['CROP', 'Object', 'Action', 'Radius', '1', '2']
