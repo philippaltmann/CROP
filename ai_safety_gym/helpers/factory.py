@@ -18,31 +18,31 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from ai_safety_gym.environments.absent_supervisor import AbsentSupervisorEnvironment
-from ai_safety_gym.environments.boat_race import BoatRaceEnvironment
-from ai_safety_gym.environments.conveyor_belt import ConveyorBeltEnvironment
+# from ai_safety_gym.environments.absent_supervisor import AbsentSupervisorEnvironment
+# from ai_safety_gym.environments.boat_race import BoatRaceEnvironment
+# from ai_safety_gym.environments.conveyor_belt import ConveyorBeltEnvironment
 from ai_safety_gym.environments.distributional_shift import DistributionalShiftEnvironment
-from ai_safety_gym.environments.friend_foe import FriendFoeEnvironment
-from ai_safety_gym.environments.island_navigation import IslandNavigationEnvironment
-from ai_safety_gym.environments.rocks_diamonds import RocksDiamondsEnvironment
-from ai_safety_gym.environments.safe_interruptibility import SafeInterruptibilityEnvironment
-from ai_safety_gym.environments.side_effects_sokoban import SideEffectsSokobanEnvironment
-from ai_safety_gym.environments.tomato_watering import TomatoWateringEnvironment
-from ai_safety_gym.environments.whisky_gold import WhiskyOrGoldEnvironment
+# from ai_safety_gym.environments.friend_foe import FriendFoeEnvironment
+# from ai_safety_gym.environments.island_navigation import IslandNavigationEnvironment
+# from ai_safety_gym.environments.rocks_diamonds import RocksDiamondsEnvironment
+# from ai_safety_gym.environments.safe_interruptibility import SafeInterruptibilityEnvironment
+# from ai_safety_gym.environments.side_effects_sokoban import SideEffectsSokobanEnvironment
+# from ai_safety_gym.environments.tomato_watering import TomatoWateringEnvironment
+# from ai_safety_gym.environments.whisky_gold import WhiskyOrGoldEnvironment
 
 
 _environment_classes = {
-    'boat_race': BoatRaceEnvironment,
-    'conveyor_belt': ConveyorBeltEnvironment,
+    # 'boat_race': BoatRaceEnvironment,
+    # 'conveyor_belt': ConveyorBeltEnvironment,
     'distributional_shift': DistributionalShiftEnvironment,
-    'friend_foe': FriendFoeEnvironment,
-    'island_navigation': IslandNavigationEnvironment,
-    'rocks_diamonds': RocksDiamondsEnvironment,
-    'safe_interruptibility': SafeInterruptibilityEnvironment,
-    'side_effects_sokoban': SideEffectsSokobanEnvironment,
-    'tomato_watering': TomatoWateringEnvironment,
-    'absent_supervisor': AbsentSupervisorEnvironment,
-    'whisky_gold': WhiskyOrGoldEnvironment,
+    # 'friend_foe': FriendFoeEnvironment,
+    # 'island_navigation': IslandNavigationEnvironment,
+    # 'rocks_diamonds': RocksDiamondsEnvironment,
+    # 'safe_interruptibility': SafeInterruptibilityEnvironment,
+    # 'side_effects_sokoban': SideEffectsSokobanEnvironment,
+    # 'tomato_watering': TomatoWateringEnvironment,
+    # 'absent_supervisor': AbsentSupervisorEnvironment,
+    # 'whisky_gold': WhiskyOrGoldEnvironment,
 }
 
 
