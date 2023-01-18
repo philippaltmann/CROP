@@ -41,7 +41,7 @@ def heatmap_2D(data, vmin=0, vmax=1):
   return figure
 
 
-def heatmap_3D(data, show_agent=False, compress=False, deterministic=False):
+def heatmap_3D(data, show_agent=False, compress=False, flat=False, deterministic=False):
   if compress: data = data[1:-1,1:-1] # Crop walls[[field for field in row[1:-1]] for row in data[1:-1]]
   mean = lambda v: round(np.mean(v),np.mean(v)<10); rows,cols = data.shape[0:2]
 
@@ -74,7 +74,7 @@ def heatmap_3D(data, show_agent=False, compress=False, deterministic=False):
   softmax = lambda val: [1 if i==np.argmax(np.mean(val, axis=1)) else 'n' for i in range(val.shape[0])]
   # np.full((val.shape[0]),None).put([np.argmax(np.mean(val, axis=1))], [1]) #val.shape[0]#
   field = lambda c,r,val: [] if None in val.flat else [(*triang(c,r,i), color(v)) for i,v in enumerate(softmax(val))] 
-  cube = lambda c,r,val: [(*f, color(t(c,r))) for f in square(c,r)] if None in val.flat else []
+  cube = lambda c,r,val: [(*f, color(t(c,r))) for f in square(c,r)] if None in val.flat and not flat else []
   agent = lambda c,r,val: [(*f, 'hsl(210,100%,50%)') for f in square(c,r)] if show_agent and c==cols-2 and r==1 else []
   process = lambda *f: np.array([result for fn in f for r, row in enumerate(data) for c,val in enumerate(reversed(row)) for result in fn(c,r,val)]).T.tolist()
 
@@ -86,6 +86,9 @@ def heatmap_3D(data, show_agent=False, compress=False, deterministic=False):
   lines = go.Scatter3d(**b, mode='lines', marker={'color':'black'})
   text=go.Scatter3d(**l, mode='text', textposition='middle center') 
   axis = {'showbackground':False, 'tickmode': 'linear', 'range':[-0.5,max(cols,rows)-0.5], 'visible': False} 
-  scene = {'xaxis':axis, 'yaxis':axis, 'zaxis':axis, 'camera': {'eye': {'x':0, 'y':0.125+compress*0.05, 'z':0.6-compress*0.1}}} 
+  if flat:
+    scene = {'xaxis':axis, 'yaxis':axis, 'zaxis':axis, 'camera': {'eye': {'x':0, 'y':0, 'z':1}, 'up':{'x':0,'y':-1,'z':0}}} 
+  else: 
+    scene = {'xaxis':axis, 'yaxis':axis, 'zaxis':axis, 'camera': {'eye': {'x':0, 'y':0.125+compress*0.05, 'z':0.6-compress*0.1}}} 
   layout = go.Layout(margin={'l':0,'r':0,'t':0,'b':0}, width=855, height=600, scene=scene,  showlegend=False) #title=title
   return go.Figure(data=[mesh,lines]+([text]if not deterministic else []), layout=layout)
