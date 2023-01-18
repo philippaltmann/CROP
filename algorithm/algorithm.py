@@ -1,13 +1,12 @@
 """ Generic Algorithm Class extending BaseAlgorithm with features needed by the training pipeline """
-import numpy as np; import pandas as pd
+import numpy as np; import pandas as pd; import random
 import torch as th; import scipy.stats as st
-import random
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import CallbackList
 from stable_baselines3.common.policies import ActorCriticPolicy, obs_as_tensor as obs
 from stable_baselines3.common.vec_env import VecEnv, VecNormalize
 from torch.utils.tensorboard.writer import SummaryWriter
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Dict, List, Optional, Type, Union
 from tqdm import tqdm; import os
 import platform; import stable_baselines3 as sb3; import gym
 from .evaluation import EvaluationCallback
@@ -26,26 +25,14 @@ class TrainableAlgorithm(BaseAlgorithm):
   def _setup_model(self) -> None:
     if self.normalize: self.env = VecNormalize(self.env)
     path = lambda seed: f"{self.path}/{seed}"
-
-    # path = lambda seed: f"{self.path}/{type(self).__name__}/{self._suffix}/{seed}"
     gen_seed = lambda s=random.randint(0, 999): s if not os.path.isdir(path(s)) else gen_seed()
     if self.seed is None: self.seed = gen_seed()
     self.path = path(self.seed) if self.path is not None else None
     self._naming = {'l': 'length-100', 'r': 'return-100'}; self._custom_scalars = {} #, 's': 'safety-100'
-    def eval_policy(s,a):
-      l = lambda t: t.cpu().detach().numpy()[0]
-      a,s = th.tensor([a]).to(self.device),obs(np.expand_dims(s, axis=0), self.device)
-      with th.no_grad(): values, log_prob, entropy = self.policy.evaluate_actions(s, a)
-      return np.exp(l(log_prob)),l(values)[0]
-    # self.heatmap_iterations = { 
-    #   'policy': (lambda _, s, a, r: eval_policy(s,a)[0], (0,1)),
-    #   # 'values': (lambda _, s, a, r: eval_policy(s,a)[1], (-100,50))
-    #   }
     self.get_actions = lambda s: self.policy.get_distribution(obs(np.expand_dims(s, axis=0), self.device)).distribution.probs
     self.heatmap_iterations = { 'policy': (lambda _, s, a, r: self.get_actions(s).cpu().detach().numpy()[0][a], (0,1)) }
     super(TrainableAlgorithm, self)._setup_model()
-    self.writer, self._registered_ci = SummaryWriter(self.path) if self.path and not self.silent else None, [] #if self.path 
-    #and not self.silent
+    self.writer, self._registered_ci = SummaryWriter(self.path) if self.path and not self.silent else None, [] 
     if not self.silent: print("+-------------------------------------------------------+\n"\
       f"| System: {platform.platform()} |\n| Version: {platform.version()}  |\n" \
       f"| GPU: {f'Enabled, version {th.version.cuda} on {th.cuda.get_device_name(0)}' if th.cuda.is_available() else'Disabled'}  |\n"\
@@ -70,14 +57,12 @@ class TrainableAlgorithm(BaseAlgorithm):
     :param **kwargs: further aguments are passed to the parent classes 
     :return: the trained model """
     callback = EvaluationCallback(self, self.envs['test'], stop_on_reward=stop_on_reward); 
-    # if self.path: callback.evaluate() # Force Pre-training eval
     if 'callback' in kwargs: callback = CallbackList([kwargs.pop('callback'), callback])    
     alg = self.__class__.__name__; total = self.num_timesteps+total_timesteps; stepsize = self.n_steps * self.n_envs;
-    # if self.path is None: eval_frequency = None
     if eval_frequency is not None: self.eval_frequency = eval_frequency * self.n_envs // stepsize * stepsize or eval_frequency * self.n_envs
     hps = self.get_hparams(); hps.pop('seed'); hps.pop('num_timesteps');  
-    self.progress_bar = tqdm(total=total, unit="steps", postfix=[0,""], bar_format="{desc}[R: {postfix[0]:4.2f}][{bar}]({percentage:3.0f}%)[{n_fmt}/{total_fmt}@{rate_fmt}]") #desc=f"Training {alg}{hp}",
-    self.progress_bar.update(self.num_timesteps);
+    self.progress_bar = tqdm(total=total, unit="steps", postfix=[0,""], bar_format="{desc}[R: {postfix[0]:4.2f}][{bar}]({percentage:3.0f}%)[{n_fmt}/{total_fmt}@{rate_fmt}]") 
+    self.progress_bar.update(self.num_timesteps); 
     model = super(TrainableAlgorithm, self).learn(total_timesteps=total_timesteps, callback=callback, **kwargs)
     self.progress_bar.close()
     return model
@@ -104,7 +89,6 @@ class TrainableAlgorithm(BaseAlgorithm):
     
     #Write metrcis summary to tensorboard 
     [self.writer.add_scalar(tag, value, step) for tag,item in summary.items() for step,value in item.items()]
-    # [self.writer.add_histogram(key, values, step) for key, values in metrics.items() if isinstance(values, th.Tensor)]
   
   def prepare_ci(self, infos: dict, category=None, confidence:float=.95, write_raw=False) -> Dict: 
     """ Computes the confidence interval := x(+/-)t*(s/√n) for a given survey of a data set. ref:
@@ -133,7 +117,7 @@ class TrainableAlgorithm(BaseAlgorithm):
     exclude = ['device','verbose','writer','tensorboard_log','start_time','rollout_buffer','eval_env']+\
       ['policy','policy_kwargs','policy_class','lr_schedule','sde_sample_freq','clip_range','clip_range_vf']+\
       ['env','observation_space','action_space','action_noise','ep_info_buffer','ep_success_buffer','target_kl']+\
-      ['envs', 'path', 'progress_bar', 'disc_kwargs', 'buffer']
+      ['envs', 'path', 'progress_bar', 'disc_kwargs', 'buffer','log_ent_coef']
     hparams = pd.json_normalize(
       {k: v.__name__ if isinstance(v, type) else v.get_hparams() if hasattr(v, 'get_hparams') else 
           v for k,v in vars(self).items() if not(k in exclude or k.startswith('_'))
@@ -150,7 +134,6 @@ class TrainableAlgorithm(BaseAlgorithm):
 
   @classmethod
   def load(cls, load, path, envs: Dict[str,VecEnv]=None, silent=False, **kwargs) -> "TrainableAlgorithm":
-    # TODO: get load path automated based on base path (gloablize path finding)
     if envs: kwargs = {'env': envs['train'], 'envs': envs, 'silent': silent, **kwargs};
     load = f"{load}/model/train"
     assert os.path.exists(load+'.zip'), f"Attempting to load a model from {load} that does not exist"
