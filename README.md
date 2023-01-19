@@ -43,13 +43,17 @@ python -m run [PPO|A2C] [|CROP Radius|CROP Action|CROP Object|RAD] --env [Train|
 # Use --path experiments/1-Train to write to path other than /results
 # Display help for command line arguments 
 $ python -m run -h
+
+# Run evaluation & benchmark experiments
+./eval
+./bench
 ```
 
 ## Plotting
 
 ```sh
 # Evaluation Train, Test & Heatmaps
-python -m plot results/1-evaluation -m Validation Evaluation -e Train -a PPO -g env algorithm 
+python -m plot results/1-evaluation -m Validation Evaluation
 python -m plot results/1-evaluation --heatmap Obstacle 
 
 # Benchmark Train & Test 
