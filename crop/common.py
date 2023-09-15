@@ -5,7 +5,8 @@ from ai_safety_gym import SafetyWrapper
 from ai_safety_gym.environments.shared.safety_game import Actions
 
 class Radius(gym.spaces.Box):
-  def __init__(self, env, radius=(5,5)):
+  def __init__(self, env, radius=5): #(5,5)
+    radius=(int(radius),int(radius))
     self.mapping = env.unwrapped._env._value_mapping;
     values = list(self.mapping.values()); self.radius = radius
     super(Radius, self).__init__(low=values[0], high=values[-1], shape=radius, dtype=int)
