@@ -70,7 +70,7 @@ preferred-citation:
     family-names: Phan
     affiliation: LMU Munich
   doi: "10.24963/ijcai.2023/380"
-  booktitle: "Proceedings of the Thirty-Second International Joint Conference on Artificial Intelligence, {IJCAI-23}"
+  journal: "Proceedings of the Thirty-Second International Joint Conference on Artificial Intelligence, {IJCAI-23}"
   month: 8
   start: 3414 # First page number
   end: 3422 # Last page number
