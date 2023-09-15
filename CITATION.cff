@@ -1,0 +1,80 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: 'CROP: Compact Reshaped Observation Processing'
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Philipp
+    family-names: Altmann
+    email: philipp.altmann@ifi.lmu.de
+    affiliation: LMU Munich
+    orcid: 'https://orcid.org/0000-0003-1134-176X'
+identifiers:
+  - type: doi
+    value: 10.24963/ijcai.2023/380
+repository-code: 'https://github.com/philippaltmann/CROP'
+abstract: >-
+  The safe application of reinforcement learning (RL)
+  requires generalization from limited training data to
+  unseen scenarios. Yet, fulfilling tasks under changing
+  circumstances is a key challenge in RL. Current
+  state-of-the-art approaches for generalization apply data
+  augmentation techniques to increase the diversity of
+  training data. Even though this prevents overfitting to
+  the training environment(s), it hinders policy
+  optimization. Crafting a suitable observation, only
+  containing crucial information, has been shown to be a
+  challenging task itself. To improve data efficiency and
+  generalization capabilities, we propose Compact Reshaped
+  Observation Processing (CROP) to reduce the state
+  information used for policy optimization. By providing
+  only relevant information, overfitting to a specific
+  training layout is precluded and generalization to unseen
+  environments is improved. We formulate three CROPs that
+  can be applied to fully observable observation- and
+  action-spaces and provide methodical foundation. We
+  empirically show the improvements of CROP in a
+  distributionally shifted safety gridworld. We furthermore
+  provide benchmark comparisons to full observability and
+  data-augmentation in two different-sized procedurally
+  generated mazes. 
+keywords:
+  - 'reinforcement learning'
+  - 'robustness'
+license: MIT
+preferred-citation:
+  type: conference-paper
+  authors:
+  - given-names: Philipp
+    family-names: Altmann
+    email: philipp.altmann@ifi.lmu.de
+    affiliation: LMU Munich
+    orcid: 'https://orcid.org/0000-0003-1134-176X'
+  - given-names: Fabian
+    family-names: Ritz
+    affiliation: LMU Munich
+  - given-names: Leonard
+    family-names: Feuchtinger
+    affiliation: LMU Munich
+  - given-names: Jonas
+    family-names: Nüßlein
+    affiliation: LMU Munich
+  - given-names: Claudia
+    family-names: Linnhoff-Popien
+    affiliation: LMU Munich
+  - given-names: Thomy
+    family-names: Phan
+    affiliation: LMU Munich
+  title: "CROP: Towards Distributional-Shift Robust Reinforcement Learning Using Compact Reshaped Observation Processing"
+  year: 2023
+  month: 8
+  collection-title: "Proceedings of the Thirty-Second International Joint Conference on Artificial Intelligence, {IJCAI-23}"
+  start: 3414 # First page number
+  end: 3422 # Last page number
+  doi: "10.24963/ijcai.2023/380"
+  url: 'https://doi.org/10.24963/ijcai.2023/380'
+  note: 'Main Track'
