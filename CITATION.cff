@@ -69,12 +69,12 @@ preferred-citation:
   - given-names: Thomy
     family-names: Phan
     affiliation: LMU Munich
-  doi: "10.24963/ijcai.2023/380"
-  journal: "Proceedings of the Thirty-Second International Joint Conference on Artificial Intelligence, {IJCAI-23}"
-  month: 8
-  start: 3414 # First page number
-  end: 3422 # Last page number
   title: "CROP: Towards Distributional-Shift Robust Reinforcement Learning Using Compact Reshaped Observation Processing"
   year: 2023
+  month: 8
+  collection-title: "Proceedings of the Thirty-Second International Joint Conference on Artificial Intelligence, {IJCAI-23}"
+  start: 3414 # First page number
+  end: 3422 # Last page number
+  doi: "10.24963/ijcai.2023/380"
   url: 'https://doi.org/10.24963/ijcai.2023/380'
   note: 'Main Track'
